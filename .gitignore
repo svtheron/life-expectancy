@@ -53,3 +53,4 @@ rsconnect/
 .gitattributes
 data/
 life-expectancy.Rproj
+.positai

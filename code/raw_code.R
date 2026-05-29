@@ -7,9 +7,11 @@ if (!require("pacman", quietly = TRUE)) {
   library (pacman)
 }
 
-p_load(tidyverse, arrow, janitor, ggridges)
+p_load(tidyverse, arrow, janitor, ggridges, ggthemes)
 
 data <- read.csv("data/Life-Expectancy-Data-Updated.csv")
+
+source("code/my_theme.R")
 
 glimpse(data)
 
@@ -264,7 +266,7 @@ data_clean |>
     size   = "Population (mln)",
     colour = "Region"
   ) +
-  theme_minimal()
+  theme_hc(base_family = "Atkinson Hyperlegible")
 
 #### Schooling & Mortality
 
@@ -390,7 +392,7 @@ data_clean |>
   theme_minimal() +
   theme(legend.position = "none")
 
-## Regional distributions accross key indicators
+## Regional distributions across key indicators
 
 data_clean |>
   select(region, life_expectancy, alcohol_consumption,
