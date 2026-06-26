@@ -1,3 +1,10 @@
+# ============================================================
+# Title:   Custom ggplot2 Theme
+# Purpose: Defines my_theme(), a minimal theme applied across all plots
+# Inputs:  None
+# Outputs: my_theme function object
+# ============================================================
+
 my_theme <- function(base_font = "mono") {
   theme_minimal(base_family = base_font) +
     theme(
