@@ -27,13 +27,6 @@ The dataset is publicly available on Kaggle:
 
 Place the downloaded file at `data/Life-Expectancy-Data-Updated.csv` before running the scripts.
 
-## Requirements
-
-- R (≥ 4.1)
-- R packages: `tidyverse`, `janitor`, `ggridges`, `ggthemes`, `arrow`, `pacman`
-
-`pacman` is used to manage package installation and loading. If it is not installed, the script will install it automatically.
-
 ## Usage
 
 1. Download the dataset from Kaggle and place it at `data/Life-Expectancy-Data-Updated.csv`.
