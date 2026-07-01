@@ -1,7 +1,7 @@
 # ============================================================
 # Title:   Life Expectancy — Exploratory Data Analysis
-# Purpose: Clean, transform, and visualise the life expectancy panel dataset
-# Inputs:  data/Life-Expectancy-Data-Updated.csv
+# Purpose: Explore the life expectancy panel dataset
+# Inputs:  data/Life-Expectancy-Data-Updated.csv (via scripts/00_clean.R)
 # Outputs: Console summaries and plots (interactive, not saved to disk)
 # ============================================================
 
@@ -12,48 +12,16 @@ if (!require("pacman", quietly = TRUE)) {
   library(pacman)
 }
 
-p_load(tidyverse, arrow, janitor, ggridges, ggthemes)
+p_load(tidyverse, ggridges, ggthemes)
 
-data <- read.csv("data/Life-Expectancy-Data-Updated.csv")
-
+source("scripts/00_clean.R")
 source("scripts/theme.R")
 
-glimpse(data)
+glimpse(data_clean)
 
-# 2. TIDYING ------------------------------------------------------------------
+# 2. EDA ------------------------------------------------------------------
 
-data_clean <- data |>
-  clean_names() |>
-  mutate(
-    economy_status = if_else(economy_status_developed == 1, "Developed", "Developing"),
-    economy_status = factor(economy_status)
-  ) |>
-  select(-economy_status_developed, -economy_status_developing)
-
-# 3. TRANSFORM ----------------------------------------------------------------
-
-data_clean <- data_clean |>
-  mutate(
-    log_gdp = log(gdp_per_capita),
-    .after = gdp_per_capita
-  )
-
-data_clean <- data_clean |>
-  mutate(
-    bmi_category = case_when(
-      bmi < 18.5             ~ "Underweight",
-      bmi >= 18.5 & bmi < 25 ~ "Normal weight",
-      bmi >= 25  & bmi < 30  ~ "Overweight",
-      bmi >= 30              ~ "Obese"
-    )
-  ) |>
-  relocate(bmi_category, .after = bmi)
-
-data_clean <- as_tibble(data_clean)
-
-# 4. EDA ----------------------------------------------------------------------
-
-# 4.1 Summary statistics and distributions ------------------------------------
+# 2.1 Summary statistics and distributions ------------------------------------
 
 summary(data_clean)
 
@@ -94,7 +62,7 @@ data_clean |>
   theme_classic() +
   scale_colour_brewer(palette = "Set1")
 
-# 4.2 Relationships between key predictors and life expectancy ----------------
+# 2.2 Relationships between key predictors and life expectancy ----------------
 
 data_clean |>
   ggplot(aes(x = log_gdp, y = life_expectancy, colour = economy_status)) +
@@ -115,16 +83,16 @@ data_clean |>
   theme_classic() +
   scale_colour_brewer(palette = "Paired")
 
-# 4.3 Regional trends ---------------------------------------------------------
+# 2.3 Regional trends ---------------------------------------------------------
 
 regional_trends <- data_clean |>
-  group_by(region, year) |>
   summarise(
     avg_hep        = mean(hepatitis_b),
     avg_measles    = mean(measles),
     avg_polio      = mean(polio),
     avg_diphtheria = mean(diphtheria),
     avg_hiv        = mean(incidents_hiv),
+    .by = c(region, year)
   )
 
 regional_trends |>
@@ -145,12 +113,12 @@ regional_trends |>
   theme_minimal()
 
 outcome_trends <- data_clean |>
-  group_by(region, year) |>
   summarise(
     avg_life_expec      = mean(life_expectancy),
     avg_schooling       = mean(schooling),
     avg_adult_mortality = mean(adult_mortality),
-    avg_youth_mortality = mean(under_five_deaths)
+    avg_youth_mortality = mean(under_five_deaths),
+    .by = c(region, year)
   ) |>
   pivot_longer(
     cols      = starts_with("avg_"),
@@ -170,7 +138,7 @@ outcome_trends |>
   ) +
   theme_minimal()
 
-# 4.4 Additional visualisations -----------------------------------------------
+# 2.4 Additional visualisations -----------------------------------------------
 
 # Mortality by region and BMI category (heatmap)
 data_clean |>
