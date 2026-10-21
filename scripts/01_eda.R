@@ -12,10 +12,13 @@ if (!require("pacman", quietly = TRUE)) {
   library(pacman)
 }
 
-p_load(tidyverse, ggridges, ggthemes)
+p_load(tidyverse, ggridges)
 
 source("scripts/00_clean.R")
 source("scripts/theme.R")
+
+# Device-default font, so plots draw on any graphics device
+theme_set(my_theme(base_font = ""))
 
 glimpse(data_clean)
 
@@ -25,6 +28,7 @@ glimpse(data_clean)
 
 summary(data_clean)
 
+# No column has missing values
 data_clean |>
   summarise(across(everything(), ~sum(is.na(.)))) |>
   glimpse()
@@ -32,17 +36,16 @@ data_clean |>
 data_clean |>
   ggplot(aes(x = life_expectancy)) +
   geom_density() +
-  theme_classic() +
   labs(
     title = "Distribution of life expectancy",
-    x = "Life expectancy",
-    y = "Density"
+    x     = "Life expectancy",
+    y     = "Density"
   )
 
 data_clean |>
   ggplot(aes(x = life_expectancy, colour = economy_status)) +
   geom_density() +
-  theme_classic() +
+  scale_colour_brewer(palette = "Set2") +
   labs(
     title  = "Distribution of life expectancy by economy status",
     x      = "Life expectancy",
@@ -51,37 +54,56 @@ data_clean |>
   )
 
 data_clean |>
-  ggplot(aes(x = region, y = life_expectancy, colour = region)) +
+  ggplot(aes(
+    x      = fct_reorder(region, life_expectancy, .fun = median),
+    y      = life_expectancy,
+    colour = region
+  )) +
   geom_boxplot() +
   coord_flip() +
+  scale_colour_brewer(palette = "Set1") +
   labs(
     title = "Life expectancy by region",
-    x     = "Region",
+    x     = NULL,
     y     = "Life expectancy"
   ) +
-  theme_classic() +
-  scale_colour_brewer(palette = "Set1")
+  theme(legend.position = "none")
 
 # 2.2 Relationships between key predictors and life expectancy ----------------
 
 data_clean |>
   ggplot(aes(x = log_gdp, y = life_expectancy, colour = economy_status)) +
   geom_point(alpha = 0.3) +
-  geom_smooth(method = "lm", se = FALSE) +
-  theme_classic()
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE) +
+  scale_colour_brewer(palette = "Set2") +
+  labs(
+    title  = "Life expectancy vs GDP per capita",
+    x      = "GDP per capita (log)",
+    y      = "Life expectancy",
+    colour = "Economy status"
+  )
 
 data_clean |>
   ggplot(aes(x = log_gdp, y = life_expectancy, colour = region)) +
   geom_point(alpha = 0.6) +
-  theme_classic() +
-  scale_colour_brewer(palette = "Paired")
+  scale_colour_brewer(palette = "Set1") +
+  labs(
+    title  = "Life expectancy vs GDP per capita, by region",
+    x      = "GDP per capita (log)",
+    y      = "Life expectancy",
+    colour = "Region"
+  )
 
+# Only a few country-years are obese (BMI >= 30), so they are looked at separately
 data_clean |>
   filter(bmi_category == "Obese") |>
-  ggplot(aes(x = alcohol_consumption, y = adult_mortality, colour = bmi_category)) +
+  ggplot(aes(x = alcohol_consumption, y = adult_mortality)) +
   geom_point() +
-  theme_classic() +
-  scale_colour_brewer(palette = "Paired")
+  labs(
+    title = "Adult mortality vs alcohol consumption (obese country-years)",
+    x     = "Alcohol consumption",
+    y     = "Adult mortality"
+  )
 
 # 2.3 Regional trends ---------------------------------------------------------
 
@@ -104,20 +126,20 @@ regional_trends |>
   ggplot(aes(x = year, y = value, colour = region)) +
   geom_line() +
   facet_wrap(~indicator, scales = "free_y") +
+  scale_colour_brewer(palette = "Set1") +
   labs(
     title  = "Health Indicators Over Time by Region",
     x      = "Year",
     y      = NULL,
     colour = "Region"
-  ) +
-  theme_minimal()
+  )
 
 outcome_trends <- data_clean |>
   summarise(
     avg_life_expec      = mean(life_expectancy),
     avg_schooling       = mean(schooling),
     avg_adult_mortality = mean(adult_mortality),
-    avg_youth_mortality = mean(under_five_deaths),
+    avg_under_five      = mean(under_five_deaths),
     .by = c(region, year)
   ) |>
   pivot_longer(
@@ -130,21 +152,21 @@ outcome_trends |>
   ggplot(aes(x = year, y = value, colour = region)) +
   geom_line() +
   facet_wrap(~indicator, scales = "free_y") +
+  scale_colour_brewer(palette = "Set1") +
   labs(
     title  = "Health Outcomes Over Time by Region",
     x      = "Year",
     y      = NULL,
     colour = "Region"
-  ) +
-  theme_minimal()
+  )
 
 # 2.4 Additional visualisations -----------------------------------------------
 
-# Mortality by region and BMI category (heatmap)
+# Mortality by region and BMI category (heatmap); obese excluded, too few rows
 data_clean |>
   filter(bmi_category != "Obese") |>
   summarise(
-    avg_mortality = mean(adult_mortality, na.rm = TRUE),
+    avg_mortality = mean(adult_mortality),
     .by = c(region, bmi_category)
   ) |>
   ggplot(aes(x = bmi_category, y = region, fill = avg_mortality)) +
@@ -155,8 +177,7 @@ data_clean |>
     x     = "BMI Category",
     y     = NULL,
     fill  = "Avg Adult Mortality"
-  ) +
-  theme_minimal()
+  )
 
 # GDP and adult mortality density
 data_clean |>
@@ -168,17 +189,20 @@ data_clean |>
     x     = "Log GDP",
     y     = "Adult mortality",
     fill  = "Count"
-  ) +
-  theme_minimal()
+  )
 
 # Infant deaths by region
 data_clean |>
-  ggplot(aes(x = region, y = infant_deaths, colour = region)) +
+  ggplot(aes(
+    x      = fct_reorder(region, infant_deaths, .fun = median),
+    y      = infant_deaths,
+    colour = region
+  )) +
   geom_jitter(alpha = 0.6, width = 0.4) +
-  scale_colour_brewer(palette = "Set3") +
   coord_flip() +
-  labs(title = "Infant deaths by region") +
-  theme_minimal()
+  scale_colour_brewer(palette = "Set1") +
+  labs(title = "Infant deaths by region", x = NULL, y = "Infant deaths") +
+  theme(legend.position = "none")
 
 # Wealth, population, and life expectancy — Rosling-style bubble chart (2015)
 data_clean |>
@@ -191,24 +215,29 @@ data_clean |>
   )) +
   geom_point(alpha = 0.8) +
   scale_size_area(max_size = 10) +
-  scale_colour_brewer(palette = "Set3") +
+  scale_colour_brewer(palette = "Set1") +
   labs(
     title  = "Wealth, Population and Life Expectancy (2015)",
     x      = "GDP per Capita (log)",
     y      = "Life Expectancy",
     size   = "Population (mln)",
     colour = "Region"
-  ) +
-  theme_hc(base_family = "Atkinson Hyperlegible")
+  )
 
 # Schooling and adult mortality by region (2010–2015)
 data_clean |>
   filter(year %in% 2010:2015) |>
   ggplot(aes(x = schooling, y = adult_mortality, colour = region)) +
   geom_point(alpha = 0.6) +
-  geom_smooth(se = FALSE) +
+  geom_smooth(method = "loess", formula = y ~ x, se = FALSE) +
   facet_wrap(~region) +
-  theme_minimal()
+  scale_colour_brewer(palette = "Set1") +
+  labs(
+    title = "Schooling and Adult Mortality by Region (2010 to 2015)",
+    x     = "Years of schooling",
+    y     = "Adult mortality"
+  ) +
+  theme(legend.position = "none")
 
 # Vaccination coverage vs life expectancy
 data_clean |>
@@ -219,7 +248,7 @@ data_clean |>
   ) |>
   ggplot(aes(x = coverage, y = life_expectancy, colour = economy_status)) +
   geom_point(alpha = 0.2) +
-  geom_smooth(method = "lm", se = FALSE) +
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE) +
   facet_wrap(~vaccine) +
   scale_colour_brewer(palette = "Set2") +
   labs(
@@ -227,8 +256,7 @@ data_clean |>
     x      = "Coverage (%)",
     y      = "Life Expectancy",
     colour = "Economy Status"
-  ) +
-  theme_minimal()
+  )
 
 # Mortality outcomes by GDP
 data_clean |>
@@ -241,7 +269,12 @@ data_clean |>
   geom_point(alpha = 0.4) +
   facet_wrap(~outcome) +
   scale_colour_brewer(palette = "Set2") +
-  theme_minimal()
+  labs(
+    title  = "Mortality Outcomes by GDP",
+    x      = "GDP per capita (log)",
+    y      = NULL,
+    colour = "Economy Status"
+  )
 
 # Correlation heatmap of all numeric variables
 cor_matrix <- data_clean |>
@@ -267,7 +300,6 @@ cor_long |>
     x     = NULL,
     y     = NULL
   ) +
-  theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 # Life expectancy distribution by region — violin + boxplot overlay
@@ -280,13 +312,12 @@ data_clean |>
   geom_violin(alpha = 0.6, trim = FALSE) +
   geom_boxplot(width = 0.15, fill = "white", outlier.shape = NA) +
   coord_flip() +
-  scale_fill_brewer(palette = "Set3") +
+  scale_fill_brewer(palette = "Set1") +
   labs(
     title = "Life Expectancy Distribution by Region",
     x     = NULL,
     y     = "Life Expectancy (years)"
   ) +
-  theme_minimal() +
   theme(legend.position = "none")
 
 # Life expectancy distribution by region — ridge plot
@@ -304,10 +335,15 @@ data_clean |>
     y     = NULL,
     fill  = "Life Expectancy"
   ) +
-  theme_minimal() +
   theme(legend.position = "none")
 
 # Regional distributions across key indicators — small multiples ridge plot
+# (regions ordered by median life expectancy, the same in every panel)
+region_order <- data_clean |>
+  summarise(median_le = median(life_expectancy), .by = region) |>
+  arrange(median_le) |>
+  pull(region)
+
 data_clean |>
   select(region, life_expectancy, alcohol_consumption,
          log_gdp, schooling, adult_mortality, infant_deaths) |>
@@ -318,7 +354,7 @@ data_clean |>
   ) |>
   ggplot(aes(
     x    = value,
-    y    = fct_reorder(region, value, .fun = median),
+    y    = factor(region, levels = region_order),
     fill = after_stat(x)
   )) +
   geom_density_ridges_gradient(scale = 2, rel_min_height = 0.01) +
@@ -329,5 +365,4 @@ data_clean |>
     x     = NULL,
     y     = NULL
   ) +
-  theme_minimal() +
   theme(legend.position = "none", panel.grid = element_blank())

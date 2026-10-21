@@ -9,6 +9,7 @@
 data/
 
 # R
+Rplots.pdf
 .Rhistory
 .Rapp.history
 .RData
